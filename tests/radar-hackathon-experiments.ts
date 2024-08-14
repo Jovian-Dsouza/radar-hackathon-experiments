@@ -7,6 +7,7 @@ import {
   mintTo,
 } from "@solana/spl-token";
 import * as fs from "fs";
+import { PublicKey } from "@solana/web3.js";
 
 export async function createTokenMint(
   provider: anchor.AnchorProvider,
@@ -66,18 +67,32 @@ describe("radar-hackathon-experiments", () => {
   const secretKeyPath = "/home/jovian/.config/solana/id.json";
   let wallet: anchor.web3.Keypair;
   let provider: anchor.AnchorProvider;
+  let mint: PublicKey;
+  let ata: PublicKey;
 
   before(async () => {
     wallet = await loadWallet(secretKeyPath);
     provider = anchor.AnchorProvider.env();
     anchor.setProvider(provider);
+    const [_mint, _ata] = await getRequiredATA(provider, wallet);
+    mint = _mint;
+    ata = _ata;
   });
 
   it("Is initialized!", async () => {
-    const [mint, ata] = await getRequiredATA(provider, wallet);
     const tx = await program.methods.initializeVault(new anchor.BN(1)).accounts({
       mint: mint
     }).rpc();
+    console.log("Your transaction signature", tx);
+  });
+
+  it("Withdraw vault!", async () => {
+    const tx = await program.methods
+      .withdrawVault()
+      .accounts({
+        mint: mint,
+      })
+      .rpc();
     console.log("Your transaction signature", tx);
   });
 });

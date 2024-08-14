@@ -7,18 +7,17 @@ use anchor_spl::{
 };
 
 #[derive(Accounts)]
-pub struct InitializeVault<'info> {
+pub struct WithdrawVault<'info> {
 
     #[account(mut)]
     pub signer: Signer<'info>,
 
     #[account(
-        init_if_needed,
+        mut,
         seeds = [VAULT_SEED],
         bump,
-        payer=signer,
         token::mint = mint,
-        token::authority = vault
+        token::authority = vault,
     )]
     pub vault: Account<'info, TokenAccount>,
 
@@ -38,18 +37,23 @@ pub struct InitializeVault<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-impl<'info> InitializeVault<'info> {
-    pub fn initialize_vault(&mut self, amount: u64) -> Result<()>{
+impl<'info> WithdrawVault<'info> {
+    pub fn withdraw_vault(&mut self, bump: u8) -> Result<()>{
         let transfer_accounts = TransferChecked {
-            from: self.ata.to_account_info(),
+            to: self.ata.to_account_info(),
             mint: self.mint.to_account_info(),
-            to: self.vault.to_account_info(),
-            authority: self.signer.to_account_info(),
+            from: self.vault.to_account_info(),
+            authority: self.vault.to_account_info(),
         };
+        let amount  = self.vault.amount;
+
+        let signer: &[&[&[u8]]] = &[&[VAULT_SEED, &[bump]]];
+
         transfer_checked(
-            CpiContext::new(
+            CpiContext::new_with_signer(
                 self.token_program.to_account_info(),
-                transfer_accounts
+                transfer_accounts,
+                signer
             ),
             amount,
             self.mint.decimals
